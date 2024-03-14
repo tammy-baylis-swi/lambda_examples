@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda function tammy_test_arm64_py38
+Resources:
+  TammyTest:
+    Type: AWS::Lambda::Function
+    Properties:
+      Architectures: 
+        - arm64
+      Code: 
+        ZipFile: |
+          import logging
+          import json
+          import os
+          import requests
+          import time
+
+          import boto3
+
+          logger = logging.getLogger()
+          layer_name = os.environ.get("LAYER_NAME_FOR_SDK")
+
+          # seems to improve response time if here
+          # also generates 2nd trace
+          client = boto3.client('lambda')
+          if layer_name:
+              layer_vers = client.get_layer_version(
+                  LayerName=layer_name,
+                  VersionNumber=1
+              )
+
+
+          def lambda_handler(event, context):
+              if event.get("exc"):
+                  raise Exception("Test exc was raised")
+
+              if event.get("timeout"):
+                  time.sleep(10)
+
+              # here for predictable response_time metrics
+              time.sleep(1)
+
+              logger.warning("First log inside handler")
+
+              # api gateway to instrumented java
+              java_api = os.environ.get("JAVA_API_RAISES")
+              req_headers = {}
+              resp_headers = {}
+              #if java_api:
+              #    resp = requests.get(java_api)
+              #    req_headers = dict(resp.request.headers)
+              #    resp_headers = dict(resp.headers)
+
+              if layer_name:
+                  layer_vers = client.get_layer_version(
+                      LayerName=layer_name,
+                      VersionNumber=1
+                  )
+              else:
+                  layer_vers = "123"
+
+              logger.warning("Second log inside handler")
+
+              path = os.environ.get("SETTINGS_FILEPATH")
+              if path and os.path.exists(path):
+                  f = open(path, "r")
+                  return {
+                      'statusCode': 200,
+                      'body': {
+                          'SettingsFile': f.read(),
+                          'ApmLayerVersion': layer_vers,
+                          'RequestHeaders': req_headers,
+                          'ResponseHeaders': resp_headers,
+                      }
+                  }
+              else:
+                  return {
+                      'statusCode': 200,
+                      'body': {
+                          'SettingsFile': json.dumps(f"{path} does not exist!"),
+                          'ApmLayerVersion': layer_vers,
+                          'RequestHeaders': req_headers,
+                          'ResponseHeaders': resp_headers,
+                      }
+                  }
+      Environment: 
+        Variables:
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/solarwinds-apm/wrapper
+          JAVA_API_RAISES: <TODO_API_URL>
+          LAYER_NAME_FOR_SDK: <TODO_LAYER_NAME>
+          OPENTELEMETRY_COLLECTOR_CONFIG_FILE: /var/task/collector.yaml
+          OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION: true
+          OTEL_PYTHON_LOG_CORRELATION: true
+          OTEL_SERVICE_NAME: tammy_awesome_test
+          SETTINGS_FILEPATH: <TODO_SETTINGS_FILEPATH>
+          SW_APM_API_TOKEN: <TODO_API_TOKEN>
+          SW_APM_DATA_CENTER: na-01
+      FunctionName: tammy_test_xray
+      Handler: index.lambda_handler
+      Layers: 
+        - <TODO_COLLECTOR_ARN>
+        - <TODO_APM_ARN>
+      Role: <TODO_ROLE_ARN>
+      Runtime: python3.8
+      Timeout: 15
