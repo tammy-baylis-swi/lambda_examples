@@ -4,6 +4,7 @@
 
 1. `brew upgrade golang`
 2. `go get -u github.com/aws/aws-lambda-go`
+3. `go get` the other imports in `main.go`
 
 ## Build and deploy to AWS Lambda function (MacOS):
 
@@ -15,4 +16,4 @@
    1. In AWS Console: Lambda function > Code > Code source > Upload from > .zip file.
 4. Make sure Lambda function handler points to our code.
    1. In AWS Console: Lambda function > Code > Runtime settings > Handler should be `main`.
-5. Invoke Lambda function with the KV `"name": "<some_name>"`
+5. Invoke Lambda function with the KV `"name": "<some_name>"`. Check CloudWatch for any logged errors.
