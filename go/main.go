@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -35,16 +34,12 @@ func HandleRequest(ctx context.Context, event *MyEvent) (*string, error) {
 func main() {
 	log.Println("Starting HandleRequest")
 
-	stdouttraceExporter, _ := stdouttrace.New()
 	httpTraceExporter, _ := otlptracehttp.New(context.Background())
 	traceProvider := trace.NewTracerProvider(
-		trace.WithBatcher(stdouttraceExporter))
-	otherBatcher := trace.NewBatchSpanProcessor(httpTraceExporter)
-	traceProvider.RegisterSpanProcessor(otherBatcher)
+		trace.WithSyncer(httpTraceExporter))
 
 	lambda.Start(
 		otellambda.InstrumentHandler(
 			HandleRequest,
-			otellambda.WithTracerProvider(traceProvider),
-			otellambda.WithFlusher(traceProvider)))
+			otellambda.WithTracerProvider(traceProvider)))
 }
