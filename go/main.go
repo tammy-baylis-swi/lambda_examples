@@ -9,8 +9,11 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer trace.Tracer
 
 // MyEvent represents input to the Lambda function.
 type MyEvent struct {
@@ -20,6 +23,10 @@ type MyEvent struct {
 // HandleRequest returns a pointer to a string containing invoke result
 // and maybe an error.
 func HandleRequest(ctx context.Context, event *MyEvent) (*string, error) {
+	// Manually create child span
+	_, span := tracer.Start(ctx, "my-manual-span")
+	defer span.End()
+
 	if event == nil {
 		message := "received a nil event"
 		log.Println(message)
@@ -37,10 +44,12 @@ func main() {
 
 	stdouttraceExporter, _ := stdouttrace.New()
 	httpTraceExporter, _ := otlptracehttp.New(context.Background())
-	traceProvider := trace.NewTracerProvider(
-		trace.WithBatcher(stdouttraceExporter))
-	otherBatcher := trace.NewBatchSpanProcessor(httpTraceExporter)
+	traceProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(stdouttraceExporter))
+	otherBatcher := sdktrace.NewBatchSpanProcessor(httpTraceExporter)
 	traceProvider.RegisterSpanProcessor(otherBatcher)
+
+	tracer = traceProvider.Tracer("MyLambdaService")
 
 	lambda.Start(
 		otellambda.InstrumentHandler(
