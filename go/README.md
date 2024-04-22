@@ -17,3 +17,10 @@
 4. Make sure Lambda function handler points to our code.
    1. In AWS Console: Lambda function > Code > Runtime settings > Handler should be `main`.
 5. Invoke Lambda function with the KV `"name": "<some_name>"`. Check CloudWatch for any logged errors.
+
+## Optional: Deploy with custom collector config
+
+1. Save a copy of [SW collector config.yaml](https://github.com/solarwinds/opentelemetry-lambda/blob/swo/collector/config.yaml) in this directory.
+2. Use the output `bootstrap` binary plus the collector config file to create a zip file: `zip myFunction.zip bootstrap config.yaml`
+3. After uploading the zip file, set the function environment variable `OPENTELEMETRY_COLLECTOR_CONFIG_FILE: /var/task/config.yaml`.
+   1. In AWS Console: Lambda function > Configuration > Environment variables > Edit button.

@@ -1,3 +1,4 @@
 *.DS_Store
 go/bootstrap
 go/myFunction.zip
+go/config.yaml
