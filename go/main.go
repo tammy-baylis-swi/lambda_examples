@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -32,6 +33,7 @@ func HandleRequest(ctx context.Context, event *MyEvent) (*string, error) {
 	time.Sleep(1 * time.Millisecond)
 
 	// otellambda does not have `WithMeterProvider` like with `WithTracerProvider`
+	// so we're setting up MeterProvider here inside the handler function
 	// https://pkg.go.dev/go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda@v0.50.0#section-readme
 	httpMetricExporter, _ := otlpmetrichttp.New(ctx)
 	metricReader := sdkmetric.NewPeriodicReader(httpMetricExporter,
@@ -53,7 +55,10 @@ func HandleRequest(ctx context.Context, event *MyEvent) (*string, error) {
 	testCounter.Add(
 		ctx,
 		3)
-	testHistogram, _ := meter.Int64Histogram("foo.tammy.test.histo")
+	testHistogram, _ := meter.Int64Histogram(
+		"foo.tammy.test.histo",
+		metric.WithDescription("The duration of handler execution."),
+		metric.WithUnit("ms"))
 
 	// Manually create child span
 	_, span := tracer.Start(ctx, "my-manual-span")
