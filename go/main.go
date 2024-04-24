@@ -26,6 +26,11 @@ type MyEvent struct {
 // HandleRequest returns a pointer to a string containing invoke result
 // and maybe an error.
 func HandleRequest(ctx context.Context, event *MyEvent) (*string, error) {
+	startTime := time.Now().UnixMilli()
+
+	// Adding a 500ms sleep for histogram testing
+	time.Sleep(1 * time.Millisecond)
+
 	// otellambda does not have `WithMeterProvider` like with `WithTracerProvider`
 	// https://pkg.go.dev/go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda@v0.50.0#section-readme
 	httpMetricExporter, _ := otlpmetrichttp.New(ctx)
@@ -42,13 +47,13 @@ func HandleRequest(ctx context.Context, event *MyEvent) (*string, error) {
 	// is used, which fails to generate data.
 	otel.SetMeterProvider(meterProvider)
 
+	// Test counter and histogram
 	var meter = otel.Meter("foo-meter")
-	lambdaStartCounter, _ := meter.Int64Counter("foo.tammy.test.count")
-	lambdaStartCounter.Add(
+	testCounter, _ := meter.Int64Counter("foo.tammy.test.count")
+	testCounter.Add(
 		ctx,
 		3)
-	// Required with PeriodicReader interval 1s
-	metricReader.ForceFlush(ctx)
+	testHistogram, _ := meter.Int64Histogram("foo.tammy.test.histo")
 
 	// Manually create child span
 	_, span := tracer.Start(ctx, "my-manual-span")
@@ -61,6 +66,15 @@ func HandleRequest(ctx context.Context, event *MyEvent) (*string, error) {
 	}
 	message := fmt.Sprintf("Hello %s!", event.Name)
 	log.Println(message)
+
+	endTime := time.Now().UnixMilli()
+	testHistogram.Record(
+		ctx,
+		(endTime - startTime))
+
+	// Required with PeriodicReader interval 1s
+	metricReader.ForceFlush(ctx)
+
 	return &message, nil
 }
 
