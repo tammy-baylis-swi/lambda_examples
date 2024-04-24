@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -79,6 +80,11 @@ func HandleRequest(ctx context.Context, event *MyEvent) (*string, error) {
 
 	// Required with PeriodicReader interval 1s
 	metricReader.ForceFlush(ctx)
+
+	// One more debug line
+	recordTime := endTime - startTime
+	timeMessage := fmt.Sprintf("endTime minus startTime was %s", strconv.Itoa(int(recordTime)))
+	log.Println(timeMessage)
 
 	return &message, nil
 }
